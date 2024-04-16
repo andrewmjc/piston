@@ -1,0 +1,23 @@
+version: '3.2'
+
+services:
+    api:
+        image: piston-custom:latest
+        container_name: piston_api
+        restart: always
+        ports:
+            - 2000:2000
+        volumes:
+            - ./data/piston/packages:/piston/packages
+        tmpfs:
+            - /piston/jobs:exec,uid=1000,gid=1000,mode=711
+            - /tmp:exec
+        environment:
+            - PISTON_MAX_FILE_SIZE=20000000 
+            - PISTON_OUTPUT_MAX_SIZE=10240
+            - PISTON_LOG_LEVEL=DEBUG
+            - PISTON_RUN_TIMEOUT=-1
+            - PISTON_COMPILE_TIMEOUT=-1
+            - PISTON_COMPILE_MEMORY_LIMIT=-1
+            - PISTON_RUN_MEMORY_LIMIT=-1
+            - PISTON_REPO_URL=https://github.com/andrewmjc/piston/releases/download/latest/index
