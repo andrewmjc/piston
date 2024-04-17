@@ -263,9 +263,36 @@ class Job {
             proc.on('exit', () => this.exit_cleanup());
 
             proc.on('close', (code, signal) => {
+
+                // get the names of all files initially in the directory
+                const initial_files = this.files.map(file => file.name);
+
+                // find all new files created by the process. omit files that were created by the process before the process was stopped
+                const artifacts = fss.readdirSync(this.dir).filter(file => {
+                    const file_path = path.join(this.dir, file);
+
+                    try {
+                        const stat = fss.statSync(file_path)
+
+                        return stat.uid === this.uid && !initial_files.includes(file);
+                    }
+                    catch (e) {
+                        // File was somehow deleted in the time that we read the dir to when we checked the file
+                        this.logger.warn(`Error reading file ${file_path}: ${e}`);
+                    }
+                }).map(file => {
+                    // return the base64 encoded file content
+                    const file_path = path.join(this.dir, file);
+                    const file_content = fss.readFileSync(file_path, 'base64');
+                    return {
+                        name: file,
+                        content: file_content
+                    }
+                });
+
                 this.close_cleanup();
 
-                resolve({ stdout, stderr, code, signal, output });
+                resolve({ stdout, stderr, code, signal, output, artifacts});
             });
 
             proc.on('error', err => {
