@@ -85,6 +85,13 @@ class Job {
         this.logger.debug(`Transfering ownership`);
 
         await fs.mkdir(this.dir, { mode: 0o700 });
+        await fs.mkdir(this.dir + "/.config", { mode: 0o777 });
+        // chown config directory to the user
+        await fs.chown(this.dir + "/.config", this.uid, this.gid);
+
+        this.logger.debug(`Created job directory ${this.dir}`);
+        this.logger.debug(`Created config directory ${this.dir}/.config`);
+
         await fs.chown(this.dir, this.uid, this.gid);
 
         for (const file of this.files) {
@@ -176,6 +183,7 @@ class Job {
                 env: {
                     ...this.runtime.env_vars,
                     PISTON_LANGUAGE: this.runtime.language,
+                    MPLCONFIGDIR: this.dir + '/.config',
                 },
                 stdio: 'pipe',
                 cwd: this.dir,
@@ -267,9 +275,14 @@ class Job {
                 // get the names of all files initially in the directory
                 const initial_files = this.files.map(file => file.name);
 
-                // find all new files created by the process. omit files that were created by the process before the process was stopped
+                // find all new files created by the process. omit files that were created by the process before the process was stopped.
+                // additionally, omit all directories
                 const artifacts = fss.readdirSync(this.dir).filter(file => {
                     const file_path = path.join(this.dir, file);
+
+                    if (fss.statSync(file_path).isDirectory()) {
+                        return false;
+                    }
 
                     try {
                         const stat = fss.statSync(file_path)
